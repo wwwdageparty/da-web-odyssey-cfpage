@@ -1,0 +1,16 @@
+name = "da-web-odyssey-cfpage"
+account_id = "your-account-id"
+
+[vars]
+DA_WRITE_TOKEN = "Demo111+"
+# If both URL and token are defined, the system will use the remote data gateway
+DA_DATAAPI_URL=""
+DA_DATAAPI_TOKEN=""
+DA_DATAAPI_SERVICE_NAME = "odyssey"
+
+# If the remote API URL and token are not defined, the system will fallback to the local D1 database
+[[d1_databases]]
+binding = "DB"
+database_name = "daodyssey"
+database_id = "your-actual-production-id-from-cloudflare"
+

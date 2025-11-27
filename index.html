@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Da Odyssey</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-900">
+
+<header class="bg-white shadow-md p-4 text-center text-xl font-bold">
+  Da Odyssey
+</header>
+
+<main class="max-w-xl mx-auto mt-6 space-y-6 px-4">
+
+  <!-- Login UI -->
+  <div id="login-box" class="bg-white p-4 rounded-2xl shadow space-y-2 hidden">
+    <input id="auth-password" type="password" placeholder="Enter password to enable posting" class="w-full p-2 border rounded" />
+    <button onclick="login()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded font-semibold">Login</button>
+    <p id="login-status" class="text-sm text-gray-500 mt-1"></p>
+  </div>
+
+  <!-- Voyage Form -->
+  <div id="post-box" class="bg-white p-4 rounded-2xl shadow space-y-2 hidden">
+    <textarea id="voyage-input" rows="3" class="w-full p-2 border rounded resize-none" placeholder="Record your voyage..."></textarea>
+    <button 
+      id="record-voyage-btn" 
+      class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded font-semibold"
+    >
+      Record Voyage
+    </button>
+    <p id="status-msg" class="text-sm text-gray-500 mt-1"></p>
+  </div>
+
+  <!-- Voyage Feed -->
+  <div id="voyage-feed" class="space-y-4">
+    <p class="text-center text-gray-500">Loading...</p>
+  </div>
+
+  <!-- Load More Button -->
+  <div id="load-more-container" class="text-center mt-4">
+    <button id="load-more-btn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded font-semibold hidden">
+      Load More Voyages
+    </button>
+  </div>
+
+</main>
+
+<script>
+let lastId = null;     // smallest ID for Load More
+let latestId = null;   // largest ID loaded, for fetching new voyages
+
+// Helper: format date in 24-hour format
+function formatVoyageDate(timestamp) {
+  return new Date(timestamp).toLocaleString(undefined, {
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+}
+
+// Login / Voyage UI
+function showLogin() {
+  document.getElementById("login-box").classList.remove("hidden");
+  document.getElementById("post-box").classList.add("hidden");
+}
+
+function showPost() {
+  document.getElementById("login-box").classList.add("hidden");
+  document.getElementById("post-box").classList.remove("hidden");
+  document.getElementById("login-status").textContent = "✅ Logged in.";
+}
+
+function login() {
+  const pw = document.getElementById("auth-password").value.trim();
+  const status = document.getElementById("login-status");
+
+  if (pw) {
+    localStorage.setItem("auth_token", pw);
+    showPost();
+  } else {
+    status.textContent = "⚠️ Password cannot be empty.";
+  }
+}
+
+// Load voyages: initial load or Load More
+async function loadVoyages(loadMore = false) {
+  const container = document.getElementById("voyage-feed");
+  const loadMoreBtn = document.getElementById("load-more-btn");
+
+  let url = "/dataread";
+  if (loadMore && lastId !== null) {
+    url += `?id=${lastId}`;
+  }
+
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+
+    if (!json.data || json.data.length === 0) {
+      if (!loadMore) container.innerHTML = "<p class='text-center text-gray-500'>No voyages found.</p>";
+      loadMoreBtn.classList.add("hidden");
+      return;
+    }
+
+    if (!loadMore) container.innerHTML = "";
+
+    for (const entry of json.data) {
+      const voyage = document.createElement("div");
+      voyage.className = "bg-white p-4 rounded-2xl shadow";
+
+      const date = formatVoyageDate(entry.v1);
+      voyage.innerHTML = `
+        <p class="mt-2 text-base">${entry.t1}</p>
+        <p class="text-xs text-gray-400 mt-2">${date}</p>
+      `;
+
+      container.appendChild(voyage);
+    }
+
+    // Update IDs
+    const ids = json.data.map(d => d.id);
+    const minId = Math.min(...ids);
+    const maxId = Math.max(...ids);
+
+    if (lastId === null || loadMore) lastId = minId;
+    if (latestId === null || !loadMore) latestId = maxId;
+
+    loadMoreBtn.classList.toggle("hidden", json.data.length < 10);
+
+  } catch (err) {
+    container.innerHTML = `<p class="text-center text-red-500">❌ Error loading voyages: ${err.message}</p>`;
+  }
+}
+
+// Fetch new voyages posted from other devices
+async function fetchNewVoyages() {
+  if (latestId === null) return;
+
+  try {
+    const res = await fetch("/dataread");
+    const json = await res.json();
+    if (!json.data || json.data.length === 0) return;
+
+    const container = document.getElementById("voyage-feed");
+
+    const newVoyages = json.data.filter(d => d.id > latestId);
+    if (newVoyages.length === 0) return;
+
+    for (const entry of newVoyages.reverse()) {
+      const voyage = document.createElement("div");
+      voyage.className = "bg-white p-4 rounded-2xl shadow";
+
+      const date = formatVoyageDate(entry.v1);
+      voyage.innerHTML = `
+        <p class="mt-2 text-base">${entry.t1}</p>
+        <p class="text-xs text-gray-400 mt-2">${date}</p>
+      `;
+      container.prepend(voyage);
+    }
+
+    latestId = Math.max(...newVoyages.map(d => d.id));
+
+  } catch (err) {
+    console.error("Error fetching new voyages:", err);
+  }
+}
+
+// Record a new voyage
+async function recordVoyage() {
+  const input = document.getElementById("voyage-input");
+  const button = document.getElementById("record-voyage-btn");
+  const status = document.getElementById("status-msg");
+
+  const text = input.value.trim();
+  const token = localStorage.getItem("auth_token");
+
+  if (!text) {
+    status.textContent = "⚠️ Please enter a voyage description.";
+    return;
+  }
+
+  if (!token) {
+    status.textContent = "❌ Not logged in.";
+    return;
+  }
+
+  button.disabled = true;
+  status.textContent = "Recording voyage...";
+
+  try {
+    const res = await fetch("/datawrite", {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain",
+        "Authorization": `Bearer ${token}`
+      },
+      body: text
+    });
+
+    if (res.status === 401) {
+      localStorage.removeItem("auth_token");
+      showLogin();
+      status.textContent = "🔒 Auth failed. Please login again.";
+      return;
+    }
+
+    if (!res.ok) {
+      throw new Error(await res.text());
+    }
+
+    input.value = "";
+    status.textContent = "✅ Voyage recorded!";
+
+    // Fetch new voyages (including this one and any from other devices)
+    if (latestId === null) {
+      await loadVoyages();    // load first-ever entry
+    } else {
+      await fetchNewVoyages(); // load only new voyages
+    }
+
+  } catch (err) {
+    status.textContent = `❌ Error: ${err.message}`;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+// Event Listeners
+document.getElementById("record-voyage-btn").addEventListener("click", recordVoyage);
+document.getElementById("load-more-btn").addEventListener("click", () => loadVoyages(true));
+
+window.addEventListener("DOMContentLoaded", () => {
+  const token = localStorage.getItem("auth_token");
+  if (token) {
+    showPost();
+  } else {
+    showLogin();
+  }
+  loadVoyages();
+});
+</script>
+
+</body>
+</html>
