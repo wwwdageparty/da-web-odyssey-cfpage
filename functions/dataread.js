@@ -19,7 +19,11 @@ export async function onRequest(context) {
         request_id: crypto.randomUUID(),
         service: DA_DATAAPI_SERVICE_NAME,
         action: "get",
-        payload: {}
+        payload: {
+          order: "desc",
+          orderby: "id",
+          offset: idParam && /^\d+$/.test(idParam) ? Number(idParam) : 0
+        }
       };
 
       const resp = await fetch(DA_DATAAPI_URL, {
