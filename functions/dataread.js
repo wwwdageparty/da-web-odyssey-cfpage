@@ -22,7 +22,10 @@ export async function onRequest(context) {
         payload: {
           order: "desc",
           orderby: "id",
-          offset: idParam && /^\d+$/.test(idParam) ? Number(idParam) : 0
+          ...(idParam && /^\d+$/.test(idParam)
+            ? { offset: Number(idParam) }
+            : {}),
+          limit: 10
         }
       };
 
