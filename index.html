@@ -23,7 +23,7 @@
 
   <!-- Voyage Form -->
   <div id="post-box" class="bg-white p-4 rounded-2xl shadow space-y-2 hidden">
-    <textarea id="voyage-input" rows="3" class="w-full p-2 border rounded resize-none" placeholder="Record your voyage..."></textarea>
+    <textarea id="voyage-input" rows="3" class="w-full p-2 border rounded resize-none leading-relaxed" placeholder="Record your voyage..."></textarea>
     <button 
       id="record-voyage-btn" 
       class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded font-semibold"
@@ -115,10 +115,16 @@ async function loadVoyages(loadMore = false) {
       voyage.className = "bg-white p-4 rounded-2xl shadow";
 
       const date = formatVoyageDate(entry.v1);
-      voyage.innerHTML = `
-        <p class="mt-2 text-base">${entry.t1}</p>
-        <p class="text-xs text-gray-400 mt-2">${date}</p>
-      `;
+      const textP = document.createElement("p");
+      textP.className = "mt-2 text-base whitespace-pre-wrap break-words";
+      textP.textContent = entry.t1;
+      
+      const dateP = document.createElement("p");
+      dateP.className = "text-xs text-gray-400 mt-2";
+      dateP.textContent = date;
+      
+      voyage.appendChild(textP);
+      voyage.appendChild(dateP);
 
       container.appendChild(voyage);
     }
@@ -157,10 +163,18 @@ async function fetchNewVoyages() {
       voyage.className = "bg-white p-4 rounded-2xl shadow";
 
       const date = formatVoyageDate(entry.v1);
-      voyage.innerHTML = `
-        <p class="mt-2 text-base">${entry.t1}</p>
-        <p class="text-xs text-gray-400 mt-2">${date}</p>
-      `;
+      const textP = document.createElement("p");
+      textP.className = "mt-2 text-base whitespace-pre-wrap break-words";
+      textP.textContent = entry.t1;
+  
+      // date
+      const dateP = document.createElement("p");
+      dateP.className = "text-xs text-gray-400 mt-2";
+      dateP.textContent = date;
+      
+      // assemble
+      voyage.appendChild(textP);
+      voyage.appendChild(dateP);
       container.prepend(voyage);
     }
 
